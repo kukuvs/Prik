@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>User API Interface</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      h1 {
+        color: #333;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+      th,
+      td {
+        border: 1px solid #ccc;
+        padding: 8px;
+        text-align: left;
+      }
+      th {
+        background-color: #f0f0f0;
+      }
+      input[type="text"],
+      input[type="number"],
+      input[type="email"] {
+        width: 150px;
+        padding: 5px;
+        margin-right: 10px;
+      }
+      button {
+        padding: 5px 10px;
+        margin-right: 5px;
+        cursor: pointer;
+      }
+      .form-section {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid #ddd;
+        background: #fafafa;
+      }
+      .form-section input {
+        margin-bottom: 10px;
+      }
+      .paging {
+        margin-top: 10px;
+      }
+      #healthStatus {
+        margin-top: 10px;
+        font-weight: bold;
+      }
+      .error {
+        color: red;
+        margin-top: 10px;
+      }
+      .success {
+        color: green;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>User Management</h1>
+
+    <!-- Фильтры -->
+    <div>
+      <label>Имя: <input type="text" id="filterName" /></label>
+      <label>Email: <input type="text" id="filterEmail" /></label>
+      <label>Мин. возраст: <input type="number" id="filterMinAge" min="0" /></label>
+      <label>Макс. возраст: <input type="number" id="filterMaxAge" min="0" /></label>
+      <button onclick="loadUsers(1)">Поиск</button>
+      <button onclick="clearFilters()">Сбросить</button>
+    </div>
+
+    <!-- Таблица пользователей -->
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Имя</th>
+          <th>Email</th>
+          <th>Возраст</th>
+          <th>Создан</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody id="userTableBody"></tbody>
+    </table>
+
+    <!-- Пагинация -->
+    <div class="paging">
+      <button onclick="changePage(currentPage - 1)" id="prevPage">Назад</button>
+      <span>Страница <span id="currentPageSpan">1</span> из <span id="totalPagesSpan">1</span></span>
+      <button onclick="changePage(currentPage + 1)" id="nextPage">Вперед</button>
+      <span style="margin-left: 20px;">Всего пользователей: <span id="totalUsers">0</span></span>
+    </div>
+
+    <!-- Форма создания/редактирования -->
+    <div class="form-section" id="formSection">
+      <h2 id="formTitle">Создать пользователя</h2>
+      <input type="hidden" id="userId" />
+      <div>
+        <label>Имя: <input type="text" id="userName" required /></label>
+      </div>
+      <div>
+        <label>Email: <input type="email" id="userEmail" required /></label>
+      </div>
+      <div>
+        <label>Возраст: <input type="number" id="userAge" min="1" max="150" required /></label>
+      </div>
+      <button onclick="submitUser()">Сохранить</button>
+      <button onclick="resetForm()">Отмена</button>
+    </div>
+
+    <!-- Статус сервера -->
+    <div id="healthStatus">Статус сервера: Проверяется...</div>
+    <div id="messageBox"></div>
+
+    <script>
+      // ИСПРАВЛЕН URL - добавлен слэш между api и v1
+      const apiBaseUrl = "/api/v1";
+      let currentPage = 1;
+      const pageSize = 10;
+      let totalPages = 1;
+
+      function showMessage(message, isError = false) {
+        const box = document.getElementById("messageBox");
+        box.textContent = message;
+        box.className = isError ? "error" : "success";
+        setTimeout(() => {
+          box.textContent = "";
+          box.className = "";
+        }, 3000);
+      }
+
+      async function checkHealth() {
+        try {
+          const res = await fetch("/health");
+          if (res.ok) {
+            const data = await res.json();
+            document.getElementById("healthStatus").textContent = "Статус сервера: ✅ OK";
+          } else {
+            document.getElementById("healthStatus").textContent = "Статус сервера: ❌ Ошибка";
+          }
+        } catch {
+          document.getElementById("healthStatus").textContent = "Статус сервера: ⚠️ Не доступен";
+        }
+      }
+
+      async function loadUsers(page) {
+        if (page < 1) return;
+        currentPage = page;
+
+        const name = document.getElementById("filterName").value.trim();
+        const email = document.getElementById("filterEmail").value.trim();
+        const min_age = document.getElementById("filterMinAge").value;
+        const max_age = document.getElementById("filterMaxAge").value;
+
+        // ИСПРАВЛЕНЫ ИМЕНА ПАРАМЕТРОВ
+        const params = new URLSearchParams({
+          page: currentPage,
+          page_size: pageSize,
+        });
+
+        if (name) params.append("name", name);
+        if (email) params.append("email", email);
+        if (min_age) params.append("min_age", min_age);
+        if (max_age) params.append("max_age", max_age);
+
+        try {
+          const res = await fetch(`${apiBaseUrl}/users?${params.toString()}`);
+          if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.message || "Ошибка при загрузке пользователей");
+          }
+          const data = await res.json();
+
+          // Обработка ответа с пагинацией
+          const users = data.users || [];
+          totalPages = data.total_pages || 1;
+          const total = data.total || 0;
+
+          let rows = "";
+          for (const user of users) {
+            const createdDate = new Date(user.created_at).toLocaleString("ru-RU");
+            rows += `<tr>
+              <td>${user.id}</td>
+              <td>${user.name}</td>
+              <td>${user.email}</td>
+              <td>${user.age}</td>
+              <td>${createdDate}</td>
+              <td>
+                <button onclick="editUser(${user.id})">✏️ Редактировать</button>
+                <button onclick="deleteUser(${user.id})">🗑️ Удалить</button>
+              </td>
+            </tr>`;
+          }
+
+          if (rows === "") {
+            rows = '<tr><td colspan="6" style="text-align: center;">Пользователи не найдены</td></tr>';
+          }
+
+          document.getElementById("userTableBody").innerHTML = rows;
+          document.getElementById("currentPageSpan").textContent = currentPage;
+          document.getElementById("totalPagesSpan").textContent = totalPages;
+          document.getElementById("totalUsers").textContent = total;
+
+          document.getElementById("prevPage").disabled = currentPage === 1;
+          document.getElementById("nextPage").disabled = currentPage >= totalPages;
+        } catch (err) {
+          showMessage("Ошибка: " + err.message, true);
+          console.error(err);
+        }
+      }
+
+      async function editUser(id) {
+        try {
+          const res = await fetch(`${apiBaseUrl}/users/${id}`);
+          if (!res.ok) throw new Error("Пользователь не найден");
+          const user = await res.json();
+
+          document.getElementById("userId").value = user.id;
+          document.getElementById("userName").value = user.name;
+          document.getElementById("userEmail").value = user.email;
+          document.getElementById("userAge").value = user.age;
+
+          document.getElementById("formTitle").textContent = "Редактировать пользователя";
+          document.getElementById("formSection").scrollIntoView({ behavior: "smooth" });
+        } catch (err) {
+          showMessage("Ошибка: " + err.message, true);
+        }
+      }
+
+      async function deleteUser(id) {
+        if (!confirm("Удалить этого пользователя?")) return;
+        try {
+          const res = await fetch(`${apiBaseUrl}/users/${id}`, {
+            method: "DELETE",
+          });
+          if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.message || "Ошибка удаления");
+          }
+          showMessage("✅ Пользователь успешно удален");
+          loadUsers(currentPage);
+        } catch (err) {
+          showMessage("Ошибка: " + err.message, true);
+        }
+      }
+
+      async function submitUser() {
+        const id = document.getElementById("userId").value;
+        const name = document.getElementById("userName").value.trim();
+        const email = document.getElementById("userEmail").value.trim();
+        const age = parseInt(document.getElementById("userAge").value, 10);
+
+        if (!name || !email || isNaN(age) || age < 1 || age > 150) {
+          showMessage("❌ Заполните все поля корректно", true);
+          return;
+        }
+
+        const userData = { name, email, age };
+
+        try {
+          let res;
+          if (id) {
+            res = await fetch(`${apiBaseUrl}/users/${id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(userData),
+            });
+          } else {
+            res = await fetch(`${apiBaseUrl}/users`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(userData),
+            });
+          }
+
+          if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.message || "Ошибка при сохранении пользователя");
+          }
+
+          showMessage("✅ Пользователь успешно сохранен");
+          resetForm();
+          loadUsers(currentPage);
+        } catch (err) {
+          showMessage("Ошибка: " + err.message, true);
+        }
+      }
+
+      function resetForm() {
+        document.getElementById("userId").value = "";
+        document.getElementById("userName").value = "";
+        document.getElementById("userEmail").value = "";
+        document.getElementById("userAge").value = "";
+        document.getElementById("formTitle").textContent = "Создать пользователя";
+      }
+
+      function clearFilters() {
+        document.getElementById("filterName").value = "";
+        document.getElementById("filterEmail").value = "";
+        document.getElementById("filterMinAge").value = "";
+        document.getElementById("filterMaxAge").value = "";
+        loadUsers(1);
+      }
+
+      function changePage(page) {
+        if (page < 1 || page > totalPages) return;
+        loadUsers(page);
+      }
+      // Инициализация
+      checkHealth();
+      loadUsers(1);
+      // Проверять статус сервера каждые 30 секунд
+      setInterval(checkHealth, 30000);
+    </script>
+  </body>
+</html>

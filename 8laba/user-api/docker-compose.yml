@@ -1,20 +1,18 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:16-alpine
     container_name: user_api_db
     environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: ${DB_NAME:-userdb}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: userdb
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./migrations:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d userdb"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -29,10 +27,11 @@ services:
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-postgres}
-      DB_NAME: ${DB_NAME:-userdb}
-      SERVER_PORT: ${SERVER_PORT:-8080}
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: userdb
+      SERVER_PORT: 8080
+      GIN_MODE: release
     ports:
       - "8080:8080"
     depends_on:

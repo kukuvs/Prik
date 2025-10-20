@@ -1,4 +1,4 @@
-FROM golang:1.22-alpine AS builder
+FROM golang:1.25.1-alpine AS builder
 
 WORKDIR /app
 
@@ -17,6 +17,7 @@ RUN apk --no-cache add ca-certificates
 
 WORKDIR /root/
 
+# Копируем только бинарник
 COPY --from=builder /app/main .
 
 EXPOSE 8080
