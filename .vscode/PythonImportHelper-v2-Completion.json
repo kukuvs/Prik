@@ -1,0 +1,11 @@
+[
+    {
+        "label": "list",
+        "kind": 5,
+        "importPath": "2laba.1",
+        "description": "2laba.1",
+        "peekOfCode": "list = [\"one\",\"tow\",\"three\"]",
+        "detail": "2laba.1",
+        "documentation": {}
+    }
+]
