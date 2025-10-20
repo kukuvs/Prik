@@ -1,77 +1,87 @@
 # User API - REST API на Go с Gin и PostgreSQL
 
-REST API для управления пользователями с полной поддержкой CRUD операций, пагинацией, фильтрацией и валидацией данных.[1][2]
+REST API для управления пользователями с поддержкой CRUD операций, пагинацией, фильтрацией и валидацией данных.
 
 ## Особенности
 
-- ✅ Полный CRUD для пользователей
-- ✅ PostgreSQL с использованием sqlx
-- ✅ Docker и Docker Compose
-- ✅ Валидация данных
-- ✅ Пагинация и фильтрация
-- ✅ Централизованная обработка ошибок
-- ✅ Unit тесты
-- ✅ Чистая архитектура (Repository → Service → Handler)
+- Полный CRUD для пользователей
+- PostgreSQL с использованием sqlx
+- Docker и Docker Compose для развертывания
+- Валидация входных данных
+- Пагинация и фильтрация результатов
+- Централизованная обработка ошибок
+- Unit тесты
+- Чистая архитектура (Repository → Service → Handler)
+- Веб-интерфейс для управления пользователями
 
 ## Технологии
 
-- Go 1.22
+- Go 1.25.1
 - Gin Web Framework
 - PostgreSQL 16
-- sqlx для работы с БД
+- sqlx для работы с базой данных
 - Docker & Docker Compose
 - validator/v10 для валидации
+- Go embed для встраивания статических файлов
 
 ## Структура проекта
 
 ```
 user-api/
-├── cmd/api/            # Точка входа
+├── cmd/
+│   └── api/
+│       ├── main.go          # Точка входа приложения
+│       └── static/          # Статические файлы (HTML)
+│           └── index.html
 ├── internal/
-│   ├── models/         # Модели данных
-│   ├── repository/     # Слой работы с БД
-│   ├── service/        # Бизнес-логика
-│   ├── handlers/       # HTTP обработчики
-│   ├── middleware/     # Middleware
-│   └── database/       # Настройка БД
-├── tests/              # Тесты
-├── migrations/         # SQL миграции
-└── docker-compose.yml
+│   ├── models/              # Модели данных
+│   ├── repository/          # Слой работы с БД
+│   ├── service/             # Бизнес-логика
+│   ├── handlers/            # HTTP обработчики
+│   ├── middleware/          # Middleware
+│   └── database/            # Настройка подключения к БД
+├── tests/                   # Тесты
+├── migrations/              # SQL миграции
+│   └── 001_create_users_table.sql
+├── docker-compose.yml
+├── Dockerfile
+├── .env
+├── go.mod
+└── go.sum
 ```
 
 ## Установка и запуск
 
-### 1. Клонирование проекта
+### Запуск через Docker Compose
 
 ```bash
+# Клонировать репозиторий
 git clone <your-repo>
 cd user-api
-```
 
-### 2. Запуск через Docker Compose
-
-```bash
+# Запустить все сервисы
 docker-compose up --build
 ```
 
-API будет доступен на `http://localhost:8080`
+API будет доступен по адресу `http://localhost:8080`
 
-### 3. Запуск локально
+### Запуск локально
 
 ```bash
-# Установка зависимостей
+# Установить зависимости
 go mod download
 
-# Запуск PostgreSQL
+# Запустить PostgreSQL через Docker
 docker-compose up postgres
 
-# Запуск API
+# Запустить API
 go run cmd/api/main.go
 ```
 
 ## API Endpoints
 
-### Получить всех пользователей
+### Получить список пользователей
+
 ```bash
 GET /api/v1/users?page=1&page_size=10&name=John&min_age=18&max_age=65
 ```
@@ -105,23 +115,13 @@ GET /api/v1/users?page=1&page_size=10&name=John&min_age=18&max_age=65
 ```
 
 ### Получить пользователя по ID
+
 ```bash
 GET /api/v1/users/{id}
 ```
 
-**Ответ:**
-```json
-{
-  "id": 1,
-  "name": "John Doe",
-  "email": "john@example.com",
-  "age": 30,
-  "created_at": "2025-10-20T18:00:00Z",
-  "updated_at": "2025-10-20T18:00:00Z"
-}
-```
-
 ### Создать пользователя
+
 ```bash
 POST /api/v1/users
 Content-Type: application/json
@@ -133,19 +133,8 @@ Content-Type: application/json
 }
 ```
 
-**Ответ (201 Created):**
-```json
-{
-  "id": 1,
-  "name": "John Doe",
-  "email": "john@example.com",
-  "age": 30,
-  "created_at": "2025-10-20T18:00:00Z",
-  "updated_at": "2025-10-20T18:00:00Z"
-}
-```
-
 ### Обновить пользователя
+
 ```bash
 PUT /api/v1/users/{id}
 Content-Type: application/json
@@ -157,26 +146,16 @@ Content-Type: application/json
 }
 ```
 
-**Ответ (200 OK):**
-```json
-{
-  "id": 1,
-  "name": "John Updated",
-  "email": "john.new@example.com",
-  "age": 31,
-  "created_at": "2025-10-20T18:00:00Z",
-  "updated_at": "2025-10-20T18:55:00Z"
-}
-```
-
 ### Удалить пользователя
+
 ```bash
 DELETE /api/v1/users/{id}
 ```
 
-**Ответ (204 No Content)**
+**Ответ:** 204 No Content
 
 ### Health Check
+
 ```bash
 GET /health
 ```
@@ -188,7 +167,15 @@ GET /health
 }
 ```
 
-## Примеры запросов с curl
+### Веб-интерфейс
+
+```bash
+GET /
+```
+
+Открывает веб-интерфейс для управления пользователями через браузер.
+
+## Примеры использования
 
 ```bash
 # Создать пользователя
@@ -210,59 +197,28 @@ curl -X PUT http://localhost:8080/api/v1/users/1 \
 # Удалить пользователя
 curl -X DELETE http://localhost:8080/api/v1/users/1
 
-# Фильтрация и пагинация
+# Фильтрация по параметрам
 curl "http://localhost:8080/api/v1/users?page=1&page_size=5&name=Alice&min_age=20&max_age=30"
 
-# Health check
+# Проверка состояния
 curl http://localhost:8080/health
-```
-
-## Тестирование
-
-```bash
-# Запуск всех тестов
-go test ./tests/...
-
-# Запуск с покрытием
-go test ./tests/... -cover
-
-# Запуск с подробным выводом
-go test ./tests/... -v
-
-# Запуск конкретного теста
-go test ./tests/... -run TestCreateUser
-```
-
-## Переменные окружения
-
-Создайте файл `.env` в корне проекта:
-
-```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=postgres
-DB_NAME=userdb
-SERVER_PORT=8080
 ```
 
 ## Валидация данных
 
 Автоматическая валидация при создании и обновлении пользователей:
 
-- **name**: 
-  - Обязательное поле
-  - Минимум 2 символа
-  - Максимум 100 символов
+**name:**
+- Обязательное поле
+- От 2 до 100 символов
 
-- **email**: 
-  - Обязательное поле
-  - Валидный формат email
+**email:**
+- Обязательное поле
+- Валидный формат email
 
-- **age**: 
-  - Обязательное поле
-  - Минимум 1
-  - Максимум 150
+**age:**
+- Обязательное поле
+- От 1 до 150
 
 **Пример ошибки валидации:**
 ```json
@@ -274,7 +230,7 @@ SERVER_PORT=8080
 
 ## Фильтрация
 
-Поддерживаемые параметры фильтрации в GET /api/v1/users:
+Доступные параметры фильтрации:
 
 - `name` - поиск по имени (регистронезависимый, частичное совпадение)
 - `email` - поиск по email (регистронезависимый, частичное совпадение)
@@ -283,10 +239,10 @@ SERVER_PORT=8080
 
 **Примеры:**
 ```bash
-# Найти всех пользователей с именем содержащим "John"
+# Найти пользователей с именем содержащим "John"
 curl "http://localhost:8080/api/v1/users?name=John"
 
-# Найти пользователей в возрасте от 20 до 30 лет
+# Найти пользователей от 20 до 30 лет
 curl "http://localhost:8080/api/v1/users?min_age=20&max_age=30"
 
 # Комбинированный фильтр
@@ -295,63 +251,50 @@ curl "http://localhost:8080/api/v1/users?name=Alice&min_age=25"
 
 ## Пагинация
 
-Параметры пагинации:
-- `page` - номер страницы (по умолчанию 1, минимум 1)
-- `page_size` - количество элементов на странице (по умолчанию 10, максимум 100)
+Параметры:
+- `page` - номер страницы (по умолчанию 1)
+- `page_size` - элементов на странице (по умолчанию 10, максимум 100)
 
 Ответ включает метаданные:
-- `users` - массив пользователей на текущей странице
-- `total` - общее количество пользователей
+- `users` - массив пользователей
+- `total` - общее количество
 - `page` - текущая страница
 - `page_size` - размер страницы
-- `total_pages` - общее количество страниц
-
-**Пример:**
-```bash
-# Получить вторую страницу по 20 элементов
-curl "http://localhost:8080/api/v1/users?page=2&page_size=20"
-```
+- `total_pages` - всего страниц
 
 ## Обработка ошибок
 
-API возвращает структурированные ошибки:
+API возвращает структурированные ошибки в формате JSON.
 
-```json
-{
-  "error": "Error type",
-  "message": "Detailed error message"
-}
-```
-
-**HTTP коды ответов:**
+**HTTP коды:**
 - `200 OK` - успешный GET/PUT запрос
-- `201 Created` - успешное создание пользователя
-- `204 No Content` - успешное удаление
-- `400 Bad Request` - ошибка валидации или некорректный запрос
+- `201 Created` - пользователь создан
+- `204 No Content` - пользователь удален
+- `400 Bad Request` - ошибка валидации
 - `404 Not Found` - пользователь не найден
-- `500 Internal Server Error` - внутренняя ошибка сервера
+- `500 Internal Server Error` - ошибка сервера
 
 ## Docker
 
-### Сборка и запуск
+### Команды управления
 
 ```bash
-# Сборка и запуск всех сервисов
+# Запустить все сервисы
 docker-compose up --build
 
-# Запуск в фоновом режиме
+# Запустить в фоновом режиме
 docker-compose up -d
 
-# Остановка сервисов
+# Остановить сервисы
 docker-compose down
 
-# Остановка с удалением volumes (БД будет очищена)
+# Остановить и удалить данные БД
 docker-compose down -v
 
 # Просмотр логов
 docker-compose logs -f
 
-# Просмотр логов конкретного сервиса
+# Логи конкретного сервиса
 docker-compose logs -f api
 ```
 
@@ -370,36 +313,65 @@ docker exec -it user_api_db psql -U postgres -d userdb
 -- Показать все таблицы
 \dt
 
--- Показать структуру таблицы users
+-- Структура таблицы users
 \d users
 
--- Показать всех пользователей
+-- Все пользователи
 SELECT * FROM users;
 
 -- Очистить таблицу
 TRUNCATE users RESTART IDENTITY CASCADE;
 ```
 
+## Переменные окружения
+
+Файл `.env` в корне проекта:
+
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=userdb
+SERVER_PORT=8080
+```
+
+## Тестирование
+
+```bash
+# Запустить все тесты
+go test ./tests/...
+
+# С покрытием
+go test ./tests/... -cover
+
+# С подробным выводом
+go test ./tests/... -v
+
+# Конкретный тест
+go test ./tests/... -run TestCreateUser
+```
+
 ## Миграции базы данных
 
-SQL миграции находятся в папке `migrations/` и автоматически применяются при запуске PostgreSQL контейнера.
+SQL миграции находятся в папке `migrations/` и автоматически применяются при запуске PostgreSQL контейнера через `docker-entrypoint-initdb.d`.
 
-**migrations/001_create_users_table.sql:**
+Миграция `001_create_users_table.sql`:
 - Создает таблицу users
-- Добавляет индексы для оптимизации поиска
-- Устанавливает ограничения (constraints)
+- Добавляет индексы для оптимизации
+- Устанавливает ограничения
 
-## Архитектура проекта
+## Архитектура
 
-Проект следует принципам чистой архитектуры (Clean Architecture):
+Проект следует принципам чистой архитектуры:
 
-1. **Models** (`internal/models/`) - структуры данных и DTO
-2. **Repository** (`internal/repository/`) - работа с базой данных
-3. **Service** (`internal/service/`) - бизнес-логика
-4. **Handlers** (`internal/handlers/`) - HTTP обработчики
-5. **Middleware** (`internal/middleware/`) - промежуточные обработчики
+1. **Models** - структуры данных и DTO
+2. **Repository** - работа с базой данных
+3. **Service** - бизнес-логика
+4. **Handlers** - HTTP обработчики
+5. **Middleware** - промежуточные обработчики
 
-**Преимущества:**
+Преимущества:
 - Разделение ответственности
 - Легкое тестирование
 - Возможность замены компонентов
@@ -422,29 +394,16 @@ github.com/stretchr/testify          // Testing toolkit
 
 ### Добавление нового поля в модель User
 
-1. Обновите структуру в `internal/models/user.go`
-2. Создайте новую миграцию в `migrations/`
-3. Обновите repository методы
-4. Обновите валидацию если необходимо
-5. Обновите тесты
+1. Обновить структуру в `internal/models/user.go`
+2. Создать миграцию в `migrations/`
+3. Обновить методы repository
+4. Обновить валидацию при необходимости
+5. Добавить тесты
 
 ### Добавление нового endpoint
 
-1. Добавьте метод в `UserService` интерфейс
-2. Реализуйте метод в `userService`
-3. Добавьте handler в `UserHandler`
-4. Зарегистрируйте route в `main.go`
-5. Добавьте тесты
-
-## Лицензия
-
-MIT License
-
-## Автор
-
-Лабораторная работа 8 - REST API на Go[6][1]
-
-***
-
-**Дата создания:** 20 октября 2025  
-**Версия:** 1.0
+1. Добавить метод в интерфейс `UserService`
+2. Реализовать метод в `userService`
+3. Добавить handler в `UserHandler`
+4. Зарегистрировать route в `main.go`
+5. Написать тесты
